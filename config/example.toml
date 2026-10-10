@@ -1,4 +1,4 @@
-# Planned MVP configuration. Copy to config/local.toml and edit locally.
+# MVP configuration. Copy to config/local.toml and edit locally.
 # Secrets belong in the environment or ntn's credential store, not here.
 [notion]
 # Use a data source ID, not the enclosing database ID.

@@ -4,7 +4,7 @@ CLI for capturing development work logs and publishing them to Notion with minim
 
 Goで作る、開発作業ログをNotionへ投稿する小さなCLIです。AIに任せた作業と自分の判断を一緒に残し、振り返りと次の作業につなげます。
 
-**Go moduleとCLI骨格を実装済みです。`--help` と各コマンドのヘルプが使えます。コマンドの処理、TOML読み込み、ntn連携、CIは未実装です。未実装コマンドは終了コード1、引数エラーは2で終了します。以下の投稿・設定仕様はMVPの予定です。**
+**Go moduleとCLI骨格を実装済みです。`--help` と各コマンドのヘルプが使えます。`config` のTOML読み込み・検証・表示と、`doctor` の読み取り診断も実装済みです。`add` とCIは未実装です。未実装コマンドは終了コード1、引数エラーは2で終了します。以下の投稿・設定仕様はMVPの予定です。**
 
 ## MVP
 
@@ -23,10 +23,10 @@ Goで作る、開発作業ログをNotionへ投稿する小さなCLIです。AI�
 | `devlog --help` | 実装済み | 全体のヘルプを表示 |
 | `devlog <command> --help` | 実装済み | 各コマンドのヘルプを表示 |
 | `devlog add` | 未実装の案内を表示 | 対話入力 → プレビュー → 確認 → 1件投稿 |
-| `devlog doctor` | 未実装の案内を表示 | 設定、ntn、認証、投稿先とプロパティの互換性を読み取りで確認 |
-| `devlog config` | 未実装の案内を表示 | 設定ファイルの場所と秘密情報を除いた有効設定を表示 |
+| `devlog doctor` | 実装済み（読み取り専用） | 設定、ntn、認証、投稿先とプロパティの互換性を読み取りで確認 |
+| `devlog config` | 実装済み | 設定ファイルの場所と秘密情報を除いた有効設定を表示 |
 
-共通オプション `--config <path>` で設定ファイルを指定します。既定の読み込み先はカレントディレクトリの `config/local.toml` とする予定です。`doctor` はテストページを作成せず、書き込みの成功は実際の投稿で確認します。
+共通オプション `--config <path>` で設定ファイルを指定します。既定の読み込み先はカレントディレクトリの `config/local.toml` です。`doctor` はテストページを作成せず、書き込みの成功は実際の投稿で確認します。
 
 ## セットアップ
 
@@ -53,7 +53,7 @@ Goで作る、開発作業ログをNotionへ投稿する小さなCLIです。AI�
    無人実行では `NOTION_API_TOKEN` を環境変数で渡せます。認証はntnに委譲し、devlogの設定にはトークンを保存しません。詳細は[公式の認証ドキュメント](https://developers.notion.com/cli/get-started/authentication)を参照してください。
 4. テスト用Notion DBを用意します。タイトル（title）、日付（date）、タグ（multi_select）のプロパティと、タグの選択肢 `AI開発` を準備してください。既存DBを使う場合は、現在のプロパティ名に設定を合わせます。
 5. 投稿先のデータソースID（DB IDとは別）と、タイトル・日付・タグのプロパティ名を `config/local.toml` に設定します。認証したユーザーまたはトークンに投稿先へのアクセス権を与えてください。既存DBは自動変更しません。ローカル設定はGitの追跡対象外です。
-6. 投稿連携の実装後、`config` と `doctor` で設定・接続を確認し、`add` のプレビューを確認してテスト用DBへ1件投稿します。件数、本文、プロパティ、表示されたページURLを確認します。現時点ではこの接続・投稿確認は実行できません。
+6. 投稿連携の実装後、`config` と `doctor` で設定・接続を確認し、`add` のプレビューを確認してテスト用DBへ1件投稿します。件数、本文、プロパティ、表示されたページURLを確認します。現在は `config` と `doctor` の確認まで実行できます。投稿は `add` 実装後に行います。
 
 `.env.example` は環境変数の説明用です。`.env` の自動読み込みは予定していません。トークンは安全な方法で環境へ注入してください。
 
@@ -67,7 +67,7 @@ go build -o bin/devlog ./cmd/devlog
 ./bin/devlog config --help
 ```
 
-`doctor`、`config`、`add` は未実装の案内を表示し、終了コード1で終了します。設定読み込みやNotion接続は行いません。`--config <path>` はコマンドの前後どちらにも指定できます。
+`add` は未実装の案内を表示し、終了コード1で終了します。`config` は検証済み設定を表示し、`doctor` は認証・投稿先を読み取りで確認します。`--config <path>` はコマンドの前後どちらにも指定できます。
 
 ### 開発時の確認
 
@@ -78,7 +78,21 @@ go build -o bin/devlog ./cmd/devlog
 git diff --check
 ```
 
-CLI骨格のヘルプ、引数エラー、未実装コマンドの終了コードを単体テストで確認しています。CIと実Notionへの接続・投稿検証は未実施です。
+ヘルプ、引数エラー、設定不備、秘密情報の非表示、ntn失敗・タイムアウト、スキーマ・タグ検証を単体テストで確認しています。テスト用DBでntn経由の実認証・読み取り診断も確認済みです。CIと実投稿の検証は未実施です。
+
+## 設定と診断
+
+```sh
+./bin/devlog config
+./bin/devlog doctor
+./bin/devlog --config config/local.toml doctor
+```
+
+TOMLは `BurntSushi/toml v1.4.0` で読み込みます。未知のキー、型違い、未設定・不正なデータソースID、必須値の空欄、プロパティ名の重複はエラーにします。`defaults.project` は空でも構いません。環境変数やntnの認証情報は表示しません。
+
+`doctor` の検証済みntnバージョンは **0.23.19** です。それ以外は未検証として終了します。ntnはPATH、見つからなければ公式インストール先の `~/.local/bin/ntn` を探します。認証はntnに委譲し、`api v1/users/me -X GET` と `api v1/data_sources/<id> -X GET` で確認します。各プロセスのタイムアウトは15秒です。
+
+設定・認証・通信・スキーマ不備では終了コード1、引数エラーでは2を返します。ntnの出力を含むエラーは表示せず、ログイン・権限・通信の確認を案内します。`doctor` は書き込み権限や投稿成功を保証しません。
 
 ## 構成
 
@@ -87,7 +101,9 @@ README.md                 目的・MVP・利用手順
 AGENTS.md                 AIエージェントの作業方針
 go.mod                    Go module・最低Goバージョン
 cmd/devlog/main.go        CLI入口・ヘルプ・引数検証
-cmd/devlog/main_test.go   CLI骨格の単体テスト
+cmd/devlog/config.go      TOML読み込み・検証
+cmd/devlog/doctor.go      ntn経由の読み取り診断
+cmd/devlog/*_test.go      CLI・設定・診断の単体テスト
 .env.example              認証用環境変数の説明
 config/example.toml       秘密情報を含まない設定例
 docs/architecture.md      入力から投稿までの設計
@@ -100,8 +116,8 @@ CLI入口は `cmd/devlog/main.go` です。必要に応じて `internal/` に設
 
 - [x] 初期ドキュメントと設定例を追加
 - [x] Go moduleとコマンド入口・ヘルプ・引数検証を作成
-- [ ] TOML設定の読み込み・検証と `config` を実装
-- [ ] 読み取りのみの `doctor` を実装し、ntnの対応バージョンを確認
+- [x] TOML設定の読み込み・検証と `config` を実装
+- [x] 読み取りのみの `doctor` を実装し、ntnの対応バージョンを確認
 - [ ] `add` の対話入力・本文生成・プレビュー・キャンセルを実装
 - [ ] ntn経由の投稿・URL表示・エラー処理を実装
 - [x] CLI骨格の単体テストとGoの品質チェック

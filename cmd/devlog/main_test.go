@@ -27,7 +27,7 @@ func TestRun(t *testing.T) {
 				args []string
 				code int
 				text string
-			}{command, []string{command}, 1, "not implemented yet"},
+			}{command, []string{command, "--config", "missing.toml"}, 1, failureText(command)},
 			struct {
 				name string
 				args []string
@@ -39,13 +39,13 @@ func TestRun(t *testing.T) {
 				args []string
 				code int
 				text string
-			}{command + " global config", []string{"--config", "custom.toml", command}, 1, "not implemented yet"},
+			}{command + " global config", []string{"--config", "custom.toml", command}, 1, failureText(command)},
 			struct {
 				name string
 				args []string
 				code int
 				text string
-			}{command + " config", []string{command, "--config", "custom.toml"}, 1, "not implemented yet"},
+			}{command + " config", []string{command, "--config", "custom.toml"}, 1, failureText(command)},
 		)
 	}
 	for _, tt := range tests {
@@ -59,4 +59,11 @@ func TestRun(t *testing.T) {
 			}
 		})
 	}
+}
+
+func failureText(command string) string {
+	if command == "add" {
+		return "not implemented yet"
+	}
+	return "cannot read configuration"
 }

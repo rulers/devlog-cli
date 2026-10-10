@@ -5,14 +5,17 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+
+	"github.com/BurntSushi/toml"
 )
 
 const usage = `Usage: devlog [--config <path>] <command>
 
 Commands:
   add      Capture and publish a development log (planned)
-  doctor   Diagnose configuration and ntn (planned)
-  config   Show effective configuration (planned)
+  doctor   Diagnose configuration and ntn (read-only)
+  config   Show effective configuration
 
 Options:
   --config <path>  Configuration file (default: config/local.toml)
@@ -51,7 +54,10 @@ func run(args []string, out, errOut io.Writer) int {
 	sub.SetOutput(errOut)
 	sub.StringVar(configPath, "config", *configPath, "Configuration file")
 	sub.Usage = func() {
-		fmt.Fprintf(out, "Usage: devlog %s [--config <path>]\n\nThis command is planned and is not implemented yet.\n", command)
+		fmt.Fprintf(out, "Usage: devlog %s [--config <path>]\n", command)
+		if command == "add" {
+			fmt.Fprintln(out, "This command is not implemented yet.")
+		}
 	}
 	if err := sub.Parse(flags.Args()[1:]); err != nil {
 		if err == flag.ErrHelp {
@@ -63,6 +69,27 @@ func run(args []string, out, errOut io.Writer) int {
 		fmt.Fprintln(errOut, "Unexpected arguments or empty --config path")
 		return 2
 	}
-	fmt.Fprintf(errOut, "%s is not implemented yet; no configuration was loaded and no Notion request was made.\n", command)
-	return 1
+	if command == "add" {
+		fmt.Fprintln(errOut, "add is not implemented yet; no Notion request was made.")
+		return 1
+	}
+	cfg, err := loadConfig(*configPath)
+	if err == nil {
+		if command == "config" {
+			var path string
+			path, err = filepath.Abs(*configPath)
+			if err == nil {
+				fmt.Fprintf(out, "# Configuration: %q\n", path)
+				err = toml.NewEncoder(out).Encode(cfg)
+			}
+		} else {
+			fmt.Fprintln(out, "OK configuration")
+			err = diagnose(cfg, out, executeNTN)
+		}
+	}
+	if err != nil {
+		fmt.Fprintln(errOut, err)
+		return 1
+	}
+	return 0
 }
