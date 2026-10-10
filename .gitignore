@@ -1,0 +1,27 @@
+# Local secrets and configuration
+.env
+.env.*
+!.env.example
+config/local.toml
+config/local.*.toml
+
+# Go build and test output
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+/coverage/
+/coverage.xml
+
+# Local work logs and scratch files
+/work/
+/logs/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

@@ -1,0 +1,13 @@
+# Planned MVP configuration. Copy to config/local.toml and edit locally.
+# Secrets belong in the environment or ntn's credential store, not here.
+[notion]
+# Use a data source ID, not the enclosing database ID.
+data_source_id = "REPLACE_WITH_DATA_SOURCE_ID"
+# Existing property names must match exactly; devlog will not alter the schema.
+title_property = "Name"       # title
+date_property = "Date"        # date
+tags_property = "Tags"        # multi_select
+tag = "AI開発"                # existing option in Tags
+
+[defaults]
+project = ""                 # empty: ask during add
