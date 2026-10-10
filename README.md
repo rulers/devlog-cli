@@ -4,7 +4,7 @@ CLI for capturing development work logs and publishing them to Notion with minim
 
 Goで作る、開発作業ログをNotionへ投稿する小さなCLIです。AIに任せた作業と自分の判断を一緒に残し、振り返りと次の作業につなげます。
 
-**現在は設計・設定例のみです。CLI本体、Go module、テスト、CIは未実装です。以下の `devlog` コマンドと設定仕様はMVPの予定です。**
+**Go moduleとCLI骨格を実装済みです。`--help` と各コマンドのヘルプが使えます。コマンドの処理、TOML読み込み、ntn連携、CIは未実装です。未実装コマンドは終了コード1、引数エラーは2で終了します。以下の投稿・設定仕様はMVPの予定です。**
 
 ## MVP
 
@@ -38,7 +38,7 @@ Goで作る、開発作業ログをNotionへ投稿する小さなCLIです。AI�
    cp config/example.toml config/local.toml
    ```
 
-2. Goを導入します。最低対応バージョンはCLI実装時に `go.mod` で確定します。
+2. Go 1.22以上を導入します（`go.mod`）。
 3. [Notion公式CLIの導入手順](https://developers.notion.com/cli/get-started/overview)に従って `ntn` を導入し、以下を実行します。
 
    ```sh
@@ -51,16 +51,17 @@ Goで作る、開発作業ログをNotionへ投稿する小さなCLIです。AI�
 
 `.env.example` は環境変数の説明用です。`.env` の自動読み込みは予定していません。トークンは安全な方法で環境へ注入してください。
 
-### CLI実装後（予定）
+### CLI骨格を実行する
 
 ```sh
 go build -o bin/devlog ./cmd/devlog
-./bin/devlog doctor
-./bin/devlog config
-./bin/devlog add
+./bin/devlog --help
+./bin/devlog add --help
+go test ./...
+go vet ./...
 ```
 
-現時点では `cmd/devlog` と `go.mod` がないため、このビルドは実行できません。
+`doctor`、`config`、`add` は未実装の案内を表示します。設定読み込みやNotion接続は行いません。`--config <path>` はコマンドの前後どちらにも指定できます。
 
 ## 構成
 
@@ -78,7 +79,7 @@ docs/decisions/           実装で確定した判断の記録
 ## ロードマップ
 
 - [x] 初期ドキュメントと設定例を追加
-- [ ] Go moduleとコマンド入口を作成
+- [x] Go moduleとコマンド入口・ヘルプ・引数検証を作成
 - [ ] TOML設定の読み込み・検証と `config` を実装
 - [ ] 読み取りのみの `doctor` を実装し、ntnの対応バージョンを確認
 - [ ] `add` の対話入力・本文生成・プレビュー・キャンセルを実装
