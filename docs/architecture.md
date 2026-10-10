@@ -2,7 +2,7 @@
 
 ## 状態と目的
 
-本書はGo製CLIのMVP設計です。Go moduleとCLI入口・ヘルプ・引数検証を実装済みです。`config` のTOML読み込み・検証・表示と、`doctor` の読み取り診断を実装済みです。`add` とCIは未実装です。完成時は既存のNotion日記DBへ、ユーザーが確認した作業ログを1件追加します。
+本書はGo製CLIのMVP設計です。Go moduleとCLI入口・ヘルプ・引数検証を実装済みです。`config` のTOML読み込み・検証・表示と、`doctor` の読み取り診断を実装済みです。`add` は未実装です。GoのQuality GateをGitHub Actionsで実行します。完成時は既存のNotion日記DBへ、ユーザーが確認した作業ログを1件追加します。
 
 ## 最小構成
 
