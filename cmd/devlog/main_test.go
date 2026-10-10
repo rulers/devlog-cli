@@ -61,9 +61,6 @@ func TestRun(t *testing.T) {
 	}
 }
 
-func failureText(command string) string {
-	if command == "add" {
-		return "not implemented yet"
-	}
+func failureText(_ string) string {
 	return "cannot read configuration"
 }

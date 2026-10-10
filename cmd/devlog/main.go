@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/BurntSushi/toml"
 )
@@ -13,7 +14,7 @@ import (
 const usage = `Usage: devlog [--config <path>] <command>
 
 Commands:
-  add      Capture and publish a development log (planned)
+  add      Capture and preview a development log (posting not implemented)
   doctor   Diagnose configuration and ntn (read-only)
   config   Show effective configuration
 
@@ -29,6 +30,10 @@ func main() {
 }
 
 func run(args []string, out, errOut io.Writer) int {
+	return runWithInput(args, os.Stdin, out, errOut, time.Now())
+}
+
+func runWithInput(args []string, in io.Reader, out, errOut io.Writer, now time.Time) int {
 	flags := flag.NewFlagSet("devlog", flag.ContinueOnError)
 	flags.SetOutput(errOut)
 	configPath := flags.String("config", "config/local.toml", "Configuration file")
@@ -56,7 +61,7 @@ func run(args []string, out, errOut io.Writer) int {
 	sub.Usage = func() {
 		fmt.Fprintf(out, "Usage: devlog %s [--config <path>]\n", command)
 		if command == "add" {
-			fmt.Fprintln(out, "This command is not implemented yet.")
+			fmt.Fprintln(out, "Collect a log, show its preview, and confirm. Posting is not implemented.")
 		}
 	}
 	if err := sub.Parse(flags.Args()[1:]); err != nil {
@@ -69,20 +74,23 @@ func run(args []string, out, errOut io.Writer) int {
 		fmt.Fprintln(errOut, "Unexpected arguments or empty --config path")
 		return 2
 	}
-	if command == "add" {
-		fmt.Fprintln(errOut, "add is not implemented yet; no Notion request was made.")
-		return 1
-	}
 	cfg, err := loadConfig(*configPath)
 	if err == nil {
-		if command == "config" {
+		switch command {
+		case "add":
+			var code int
+			code, err = runAdd(cfg, in, out, now)
+			if err == nil {
+				return code
+			}
+		case "config":
 			var path string
 			path, err = filepath.Abs(*configPath)
 			if err == nil {
 				fmt.Fprintf(out, "# Configuration: %q\n", path)
 				err = toml.NewEncoder(out).Encode(cfg)
 			}
-		} else {
+		case "doctor":
 			fmt.Fprintln(out, "OK configuration")
 			err = diagnose(cfg, out, executeNTN)
 		}
