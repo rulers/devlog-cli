@@ -14,7 +14,7 @@ import (
 const usage = `Usage: devlog [--config <path>] <command>
 
 Commands:
-  add      Capture and preview a development log (posting not implemented)
+  add      Capture, preview and post a development log to Notion
   doctor   Diagnose configuration and ntn (read-only)
   config   Show effective configuration
 
@@ -61,7 +61,7 @@ func runWithInput(args []string, in io.Reader, out, errOut io.Writer, now time.T
 	sub.Usage = func() {
 		fmt.Fprintf(out, "Usage: devlog %s [--config <path>]\n", command)
 		if command == "add" {
-			fmt.Fprintln(out, "Collect a log, show its preview, and confirm. Posting is not implemented.")
+			fmt.Fprintln(out, "Collect a log, preview it, and post to Notion after confirmation.")
 		}
 	}
 	if err := sub.Parse(flags.Args()[1:]); err != nil {

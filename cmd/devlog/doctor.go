@@ -21,6 +21,10 @@ func executeNTN(args ...string) ([]byte, error) {
 }
 
 func executeNTNWithTimeout(timeout time.Duration, args ...string) ([]byte, error) {
+	return executeNTNInput(timeout, nil, args...)
+}
+
+func executeNTNInput(timeout time.Duration, input io.Reader, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	path, err := exec.LookPath("ntn")
@@ -34,8 +38,8 @@ func executeNTNWithTimeout(timeout time.Duration, args ...string) ([]byte, error
 		}
 	}
 	cmd := exec.CommandContext(ctx, path, args...)
-	// Do not inherit stdin: ntn infers POST when stdin contains JSON.
-	cmd.Stdin = nil
+	// Only pass explicit input; read-only callers must not inherit terminal stdin.
+	cmd.Stdin = input
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = io.Discard

@@ -99,7 +99,7 @@ func TestRunAddPreviewAndCancel(t *testing.T) {
 		"Date: 2026-10-11",
 		"Tag: AI開発",
 		"## 今日やったこと\n\nFinished feature",
-		"Confirm preview (no posting will occur)? [y/N]:",
+		"Post this log to Notion? [y/N]:",
 		"Cancelled; nothing was sent.",
 	} {
 		if !strings.Contains(out.String(), text) {
@@ -152,26 +152,37 @@ func TestRunAddEOFAlwaysCancels(t *testing.T) {
 	}
 }
 
-func TestConfirmedAddDoesNotPost(t *testing.T) {
+func TestConfirmedAddPostsOnce(t *testing.T) {
 	path := configFile(t, strings.Replace(validConfig, `project = ""`, `project = "Configured project"`, 1))
 	input := addTestInput("", "Work completed", []string{"", "", "", "", "", "", ""}, "y")
-	var out, errOut bytes.Buffer
-	code := runWithInput([]string{"add", "--config", path}, strings.NewReader(input), &out, &errOut, testAddDate())
+	cfg, err := loadConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	calls := 0
+	code, err := runAddWithPoster(cfg, strings.NewReader(input), &out, testAddDate(), func(got configuration, title, date string, entry workLog) (string, error) {
+		calls++
+		if got != cfg || title != "2026-10-11 / Configured project" || date != "2026-10-11" || entry.sections[0] != "Work completed" {
+			t.Fatal("incorrect posting input")
+		}
+		return "https://www.notion.so/test-page", nil
+	})
 	if code != 0 {
-		t.Fatalf("exit = %d, want 0; stderr: %s", code, &errOut)
+		t.Fatalf("exit = %d, want 0; error: %v", code, err)
 	}
 	for _, text := range []string{
 		"Title: 2026-10-11 / Configured project",
 		"Date: 2026-10-11",
 		"Tag: AI開発",
-		"Posting is not implemented; nothing was sent.",
+		"Created: https://www.notion.so/test-page",
 	} {
 		if !strings.Contains(out.String(), text) {
 			t.Errorf("confirmed preview missing %q:\n%s", text, &out)
 		}
 	}
-	if strings.Contains(errOut.String(), "error") {
-		t.Fatalf("unexpected error output: %s", &errOut)
+	if err != nil || calls != 1 {
+		t.Fatalf("calls %d, error %v", calls, err)
 	}
 }
 
@@ -182,7 +193,9 @@ func TestRunAddRetriesInvalidRequiredInput(t *testing.T) {
 	}
 	input := "\nProject\n\nWork\n" + strings.Repeat("\n", 7) + "y\n"
 	var out bytes.Buffer
-	code, err := runAdd(cfg, strings.NewReader(input), &out, testAddDate())
+	code, err := runAddWithPoster(cfg, strings.NewReader(input), &out, testAddDate(), func(configuration, string, string, workLog) (string, error) {
+		return "https://www.notion.so/test-page", nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -33,6 +33,10 @@ type workLog struct {
 }
 
 func runAdd(cfg configuration, in io.Reader, out io.Writer, now time.Time) (int, error) {
+	return runAddWithPoster(cfg, in, out, now, postWorkLog)
+}
+
+func runAddWithPoster(cfg configuration, in io.Reader, out io.Writer, now time.Time, post func(configuration, string, string, workLog) (string, error)) (int, error) {
 	reader := bufio.NewReader(in)
 	entry, canceled, err := collectWorkLog(reader, out, cfg.Defaults.Project)
 	if err != nil {
@@ -57,7 +61,11 @@ func runAdd(cfg configuration, in io.Reader, out io.Writer, now time.Time) (int,
 		return addCancelledExitCode, nil
 	}
 
-	fmt.Fprintln(out, "Posting is not implemented; nothing was sent.")
+	url, err := post(cfg, title, date, entry)
+	if err != nil {
+		return 1, err
+	}
+	fmt.Fprintln(out, "Created: "+url)
 	return 0, nil
 }
 
@@ -146,7 +154,7 @@ func printAddPreview(out io.Writer, cfg configuration, title, date, body string)
 }
 
 func confirmAdd(reader *bufio.Reader, out io.Writer) (bool, bool, error) {
-	answer, canceled, err := readPrompt(reader, out, "Confirm preview (no posting will occur)? [y/N]: ")
+	answer, canceled, err := readPrompt(reader, out, "Post this log to Notion? [y/N]: ")
 	if err != nil || canceled {
 		return false, canceled, err
 	}
