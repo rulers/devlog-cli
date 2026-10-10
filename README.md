@@ -226,6 +226,32 @@ CLI入口は `cmd/devlog/main.go` です。必要に応じて `internal/` に設
 
 投稿機能を含むMVPの完了条件は、設定したテスト用DBへ確認操作後に1件投稿できURLを取得できること、キャンセルと `doctor` が書き込まないこと、設定不備・認証失敗・投稿失敗が分かることです。テストDBへの実投稿と単体テストでMVPを検証済みです。TUI、AI要約、自動投稿、CIからの投稿、複数サービス対応はMVPに含めません。
 
+## ブランチ運用（Git Flow）
+
+| ブランチ | 用途 | 分岐元・統合先 |
+| --- | --- | --- |
+| `main` | リリース済みのコード。`v0.1.0` などのタグを付ける | `release/*`、`hotfix/*` から統合 |
+| `develop` | 次のリリースに向けた開発の統合先 | `feature/*`、`release/*`、`hotfix/*` から統合 |
+| `feature/<name>` | 機能追加・通常の修正 | `develop` から分岐し、`develop` へ統合 |
+| `release/<version>` | リリース前の確認・修正 | `develop` から分岐し、`main` と `develop` へ統合 |
+| `hotfix/<name>` | リリース済みコードの緊急修正 | `main` から分岐し、`main` と `develop` へ統合 |
+
+通常の開発は、次のように作業ブランチを作ります。
+
+```sh
+git switch develop
+git pull --ff-only
+git switch -c feature/my-feature
+# 実装・品質チェック・コミット
+git push -u origin feature/my-feature
+```
+
+GitHubで `develop` 向けのPRを作り、CI成功後にマージします。統合にはマージコミットを使い、ブランチの履歴を残します。`feature/*`、`release/*`、`hotfix/*` は作業が必要になった時点で作成します。
+
+リリース時は `release/<version>` を `main` へ統合したコミットに `v<version>` タグを付け、リリース中の修正を `develop` にも統合します。hotfixも両ブランチに反映します。既存のリリースタグは付け替えません。
+
+CIは `main`、`develop`、作業ブランチのpush、`v*` タグ、および `main` / `develop` 向けPRで実行します。`git flow` 拡張CLIは必須ではなく、通常のGitコマンドで運用できます。
+
 ## ライセンス
 
 [MIT](LICENSE)

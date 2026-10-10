@@ -28,6 +28,10 @@ TUI、AI要約、Git情報の自動収集、バッチ投稿、バックグラウ
 
 ## Quality Gate
 
+- Git Flowで運用する。通常の機能・修正は `develop` から `feature/<name>` を作り、`develop` 向けPRで統合する。
+- リリースは `develop` から `release/<version>` を作り、完了時に `main` と `develop` へ統合して `main` に `v<version>` タグを付ける。緊急修正は `main` から `hotfix/<name>` を作り、同じく両ブランチへ反映する。
+- `main`・`develop` の統合は履歴を残すマージを使う。リリース統合・タグ付け・外部へのpushは依頼された範囲で行い、既存タグは付け替えない。
+
 - ドキュメントのみの変更: 相互リンク、コマンドと実装状態の整合、設定例の構文、秘密情報がないこと、`git diff --check` を確認する。
 - Go実装後: 変更したGoファイルに `gofmt` を適用し、変更箇所に近いテストから確認する。コミット前に `go test ./...`、`go vet ./...`、`go build -o bin/devlog ./cmd/devlog` を成功させる。
 - 入力・設定の検証、本文生成、キャンセル、ntn失敗の扱いを意味のあるテストで確認する。外部実行はテスト用の代替で検証し、単体テストから実Notionへ接続しない。
