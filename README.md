@@ -44,7 +44,7 @@ Goで作る、開発作業ログをNotionへ投稿する小さなCLIです。AI�
    cp config/example.toml config/local.toml
    ```
 
-2. Go 1.22以上を導入します（`go.mod`）。
+2. Go 1.27以上を導入します（`go.mod`）。
 3. [Notion公式CLIの導入手順](https://developers.notion.com/cli/get-started/overview)に従って `ntn` を導入し、以下を実行します。
 
    ```sh
@@ -59,7 +59,7 @@ Goで作る、開発作業ログをNotionへ投稿する小さなCLIです。AI�
 
 `.env.example` は環境変数の説明用です。`.env` の自動読み込みは予定していません。トークンは安全な方法で環境へ注入してください。
 
-### CLI骨格を実行する
+### ビルドとヘルプ
 
 ```sh
 go build -o bin/devlog ./cmd/devlog
@@ -70,6 +70,48 @@ go build -o bin/devlog ./cmd/devlog
 ```
 
 `add` はプロジェクトと作業内容を対話入力してプレビューします。確認の既定値はキャンセルです。確認後にntn・認証・投稿先スキーマ・タグを診断し、1件投稿してURLを表示します。`config` は検証済み設定を表示し、`doctor` は認証・投稿先を読み取りで確認します。`--config <path>` はコマンドの前後どちらにも指定できます。
+
+## 使い方
+
+セットアップ後、リポジトリのディレクトリで次のコマンドを実行します。
+
+```sh
+./bin/devlog config   # 投稿先と有効な設定を確認
+./bin/devlog doctor   # ntn・認証・投稿先を診断（投稿しない）
+./bin/devlog add      # 作業ログを入力して投稿
+```
+
+`add` では各項目を1行ずつ入力し、Enterで確定します。プロジェクト名と「今日やったこと」は必須です。任意項目はEnterだけで省略できます。プロジェクトの既定値を `config/local.toml` の `defaults.project` に設定すると、Enterだけでその値を使えます。
+
+入力例です。任意項目は必要なものだけ埋めます。
+
+| 入力項目 | 例 |
+| --- | --- |
+| Project | `devlog-cli` |
+| 今日やったこと | `Notion投稿機能を実装し、テストDBへの投稿を確認した` |
+| 判断・変更 | `Notion通信はntnに任せることにした` |
+| AIに任せたこと | `実装・単体テスト・README更新` |
+| うまくいったこと | `日本語の本文とタグを正常に保存できた` |
+| 詰まったこと・失敗 | 空欄ならEnter |
+| Evidence | `テスト成功、作成ページのURLなど` |
+| 学び | `読み取り診断と実投稿の確認を分ける` |
+| 次にやること | `普段の開発ログで使ってみる` |
+
+最後に投稿先・タイトル・日付・タグ・本文が表示されます。内容を確認して、次の質問に答えます。
+
+```text
+Post this log to Notion? [y/N]:
+```
+
+`y` または `yes` を入力すると1件投稿し、`Created: https://...` とページURLを表示します。Enterだけ、`n`、または入力終了（EOF）でキャンセルします。入力内容はローカルには保存しません。
+
+別の設定ファイルを使う場合は、次のように指定します。
+
+```sh
+./bin/devlog add --config config/local.toml
+```
+
+現在は対話入力のみ対応しています。複数行入力、Markdownファイル入力、`--dry-run`、Git情報の添付は未実装です。
 
 ### 開発時の確認
 
