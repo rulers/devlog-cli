@@ -2,9 +2,10 @@ name: Go
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop, 'feature/**', 'release/**', 'hotfix/**']
+    tags: ['v*']
   pull_request:
-    branches: [main]
+    branches: [main, develop]
   workflow_dispatch:
 
 permissions:
