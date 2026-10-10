@@ -4,7 +4,7 @@ CLI for capturing development work logs and publishing them to Notion with minim
 
 Goで作る、開発作業ログをNotionへ投稿する小さなCLIです。AIに任せた作業と自分の判断を一緒に残し、振り返りと次の作業につなげます。
 
-**`config`、読み取り専用の `doctor`、および `add` の対話入力・プレビュー・確認後のNotion投稿・URL表示を実装済みです。GoのQuality GateをGitHub Actionsで実行します。テスト用Notion DBへの1件投稿と内容・URLの取得を確認済みです。**
+**`config`、読み取り専用の `doctor`、および `add` の対話入力・引数入力・プレビュー・確認後のNotion投稿・URL表示を実装済みです。GoのQuality GateをGitHub Actionsで実行します。テスト用Notion DBへの1件投稿と内容・URLの取得を確認済みです。**
 
 ## MVP
 
@@ -17,6 +17,8 @@ Goで作る、開発作業ログをNotionへ投稿する小さなCLIです。AI�
 本文の見出しは「今日やったこと」「判断・変更」「AIに任せたこと」「うまくいったこと」「詰まったこと・失敗」「Evidence」「学び」「次にやること」に統一します。Evidenceは手入力のURLや検証結果です。タイトルは `YYYY-MM-DD / Project`、タグの既定値は `AI開発` とします。空の任意項目は省略できます。
 
 `add` はプロジェクトと各見出しをこの順に尋ねます。プロジェクトと「今日やったこと」は必須です。`defaults.project` が設定されていればプロジェクトの既定値として使い、未設定なら入力を求めます。
+
+コマンドラインから引数で指定することもできます。プロジェクト名、作業内容などを`-p`、`-t` などのオプションで渡すと、対話入力をスキップして直接投稿プレビューへ進みます。
 
 ## コマンド
 
@@ -111,7 +113,50 @@ Post this log to Notion? [y/N]:
 ./bin/devlog add --config config/local.toml
 ```
 
-現在は対話入力のみ対応しています。複数行入力、Markdownファイル入力、`--dry-run`、Git情報の添付は未実装です。
+### 引数入力
+
+対話入力の代わりに、コマンドラインから引数でログ項目を指定できます。ログ項目を1つ以上指定すると、対話入力をスキップして直接投稿プレビューへ進みます。
+
+引数一覧:
+
+```text
+-p, --project <name>     プロジェクト名
+-t, --today <text>       今日やったこと
+-d, --decision <text>    判断・変更
+-a, --ai <text>          AIに任せたこと
+-s, --success <text>     うまくいったこと
+-b, --blocker <text>     詰まったこと・失敗
+-e, --evidence <text>    Evidence
+-l, --learning <text>    学び
+-n, --next <text>        次にやること
+--no-preview             本文プレビューを省略（確認は実施）
+-y, --yes                投稿確認を省略して投稿
+-c, --config <path>      設定ファイル
+```
+
+使用例です。
+
+```sh
+./bin/devlog add -p "devlog-cli" -t "引数入力機能を実装" -a "テスト作成・ドキュメント更新" -e "gofmt,go test,go vet成功"
+```
+
+このコマンドを実行すると、指定した項目が設定され、投稿前プレビューで確認を求めます。指定していない任意項目は本文から省略されます。プロジェクト（`-p`/`--project`）が指定されていない場合は、`defaults.project` の既定値を使用します。プロジェクトと「今日やったこと」は必須です。
+
+`--no-preview` を指定すると本文の詳細表示をスキップし、投稿先・タイトル・日付・タグだけを表示して確認を求めます。
+
+ログ項目の引数を1つでも指定すると引数入力モードになり、項目の追加入力は求めません。明示的な空文字も指定として扱います。必須項目が不足・空白ならエラーです。長い引数と短縮形を重ねて指定した場合は、最後の値を使います。短縮形は `-p 値 -t 値` のように個別に指定してください。`--no-preview` だけなら従来の対話入力になります。
+
+```sh
+./bin/devlog add -p devlog-cli -t "投稿機能を確認した" --no-preview
+```
+
+`-y` / `--yes` を指定すると投稿確認を省略します。入力と投稿先の検証は行い、プレビューは表示します。本文表示も省略する場合は `--no-preview` と併用します。`-y` だけなら項目の対話入力は続け、入力が完了すると確認なしで投稿します。
+
+```sh
+./bin/devlog add -p devlog-cli -t "引数からログを登録した" --no-preview -y
+```
+
+`--no-preview` 単独では投稿確認を省略しません。投稿失敗時の自動再送も行いません。
 
 ### 開発時の確認
 
@@ -153,7 +198,7 @@ go.mod                    Go module・最低Goバージョン
 cmd/devlog/main.go        CLI入口・ヘルプ・引数検証
 cmd/devlog/config.go      TOML読み込み・検証
 cmd/devlog/doctor.go      ntn経由の読み取り診断
-cmd/devlog/add.go         対話入力・プレビュー・確認
+cmd/devlog/add.go         対話入力・引数入力・プレビュー・確認
 cmd/devlog/post.go        ページ生成・投稿・URL取得
 cmd/devlog/*_test.go      CLI・設定・診断の単体テスト
 .env.example              認証用環境変数の説明
@@ -176,7 +221,8 @@ CLI入口は `cmd/devlog/main.go` です。必要に応じて `internal/` に設
 - [x] 設定・入力・本文生成・プレビュー・キャンセルの単体テストを追加
 - [x] Goの品質チェックを行うCI
 - [x] テストDBへの確認操作を伴う実投稿確認
-- [ ] v0.2: 引数入力、Gitのブランチ・コミット情報、Markdown入力を必要に応じて追加
+- [x] v0.2: `add` 引数入力、短縮形オプション、プレビュー省略を実装
+- [ ] Gitのブランチ・コミット情報、Markdown入力を必要に応じて追加
 
 投稿機能を含むMVPの完了条件は、設定したテスト用DBへ確認操作後に1件投稿できURLを取得できること、キャンセルと `doctor` が書き込まないこと、設定不備・認証失敗・投稿失敗が分かることです。テストDBへの実投稿と単体テストでMVPを検証済みです。TUI、AI要約、自動投稿、CIからの投稿、複数サービス対応はMVPに含めません。
 

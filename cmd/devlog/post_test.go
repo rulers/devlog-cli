@@ -97,7 +97,7 @@ func TestAddCancellationAndFailureBoundary(t *testing.T) {
 		code, err := runAddWithPoster(cfg, strings.NewReader(addTestInput("Project", "Work", make([]string, 7), answer)), &out, testAddDate(), func(configuration, string, string, workLog) (string, error) {
 			calls++
 			return "", errors.New("posting failed")
-		})
+		}, addArgs{})
 		if answer == "yes" {
 			if calls != 1 || code != 1 || err == nil || strings.Contains(out.String(), "Created:") {
 				t.Fatal("failure reported as success")

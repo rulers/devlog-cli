@@ -1,0 +1,8 @@
+{
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    {
+      "text": "コミットメッセージの件名と本文は日本語で、変更内容と目的を簡潔に記載してください。コードの識別子、コマンド、ファイル名は原文のままにしてください。"
+    }
+  ],
+  "chat.useAgentsMdFile": true
+}

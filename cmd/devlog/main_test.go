@@ -19,6 +19,8 @@ func TestRun(t *testing.T) {
 		{"unknown flag", []string{"--unknown"}, 2, "flag provided but not defined"},
 		{"empty config", []string{"config", "--config", ""}, 2, "empty --config"},
 		{"extra argument", []string{"add", "extra"}, 2, "Unexpected arguments"},
+		{"config shorthand -c", []string{"-c", "missing.toml", "config"}, 1, "cannot read configuration"},
+		{"add shorthand -c", []string{"add", "-c", "missing.toml"}, 1, "cannot read configuration"},
 	}
 	for _, command := range []string{"add", "doctor", "config"} {
 		tests = append(tests,
@@ -58,6 +60,41 @@ func TestRun(t *testing.T) {
 				t.Fatalf("missing %q in output: %s%s", tt.text, &out, &errOut)
 			}
 		})
+	}
+}
+
+func TestAddCommandWithArguments(t *testing.T) {
+	cfg := configFile(t, validConfig)
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"project short", []string{"add", "-c", cfg, "-p", "MyProject", "-t", "Work"}, "MyProject"},
+		{"project long", []string{"add", "-c", cfg, "--project", "LongProject", "-t", "Work"}, "LongProject"},
+		{"today short", []string{"add", "-c", cfg, "-p", "P", "-t", "ShortToday"}, "ShortToday"},
+		{"today long", []string{"add", "-c", cfg, "-p", "P", "--today", "LongToday"}, "LongToday"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var out, errOut bytes.Buffer
+			code := runWithInput(tt.args, strings.NewReader("n\n"), &out, &errOut, testAddDate())
+			if code != addCancelledExitCode {
+				t.Fatalf("exit = %d, want %d; error: %s", code, addCancelledExitCode, errOut.String())
+			}
+			if !strings.Contains(out.String(), tt.want) {
+				t.Fatalf("output missing %q: %s", tt.want, &out)
+			}
+		})
+	}
+}
+
+func TestAddCommandUnknownFlag(t *testing.T) {
+	cfg := configFile(t, validConfig)
+	var out, errOut bytes.Buffer
+	code := runWithInput([]string{"add", "-c", cfg, "--unknown", "value"}, strings.NewReader(""), &out, &errOut, testAddDate())
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2 for unknown flag", code)
 	}
 }
 

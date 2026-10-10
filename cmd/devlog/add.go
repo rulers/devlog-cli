@@ -32,13 +32,42 @@ type workLog struct {
 	sections []string
 }
 
-func runAdd(cfg configuration, in io.Reader, out io.Writer, now time.Time) (int, error) {
-	return runAddWithPoster(cfg, in, out, now, postWorkLog)
+type addArgs struct {
+	project   *string
+	today     *string
+	decision  *string
+	ai        *string
+	success   *string
+	blocker   *string
+	evidence  *string
+	learning  *string
+	next      *string
+	noPreview bool
+	yes       bool
 }
 
-func runAddWithPoster(cfg configuration, in io.Reader, out io.Writer, now time.Time, post func(configuration, string, string, workLog) (string, error)) (int, error) {
+func runAdd(cfg configuration, in io.Reader, out io.Writer, now time.Time) (int, error) {
+	return runAddWithPoster(cfg, in, out, now, postWorkLog, addArgs{})
+}
+
+func runAddWithArgs(cfg configuration, in io.Reader, out io.Writer, now time.Time, args addArgs) (int, error) {
+	return runAddWithPoster(cfg, in, out, now, postWorkLog, args)
+}
+
+func runAddWithPoster(cfg configuration, in io.Reader, out io.Writer, now time.Time, post func(configuration, string, string, workLog) (string, error), args addArgs) (int, error) {
 	reader := bufio.NewReader(in)
-	entry, canceled, err := collectWorkLog(reader, out, cfg.Defaults.Project)
+
+	var entry workLog
+	var canceled bool
+	var err error
+
+	// Check if argument mode is active
+	if isArgMode(args) {
+		entry, canceled, err = collectWorkLogWithArgs(cfg.Defaults.Project, args)
+	} else {
+		entry, canceled, err = collectWorkLog(reader, out, cfg.Defaults.Project)
+	}
+
 	if err != nil {
 		return 1, err
 	}
@@ -50,15 +79,26 @@ func runAddWithPoster(cfg configuration, in io.Reader, out io.Writer, now time.T
 	date := now.Format("2006-01-02")
 	title := date + " / " + entry.project
 	body := renderMarkdown(entry)
-	printAddPreview(out, cfg, title, date, body)
 
-	confirmed, canceled, err := confirmAdd(reader, out)
-	if err != nil {
-		return 1, err
+	if !args.noPreview {
+		printAddPreview(out, cfg, title, date, body)
+	} else {
+		// Show destination, title, date, tag even with --no-preview
+		fmt.Fprintf(out, "Destination: Notion data source %s\n", cfg.Notion.DataSourceID)
+		fmt.Fprintf(out, "Title: %s\n", title)
+		fmt.Fprintf(out, "Date: %s\n", date)
+		fmt.Fprintf(out, "Tag: %s\n\n", cfg.Notion.Tag)
 	}
-	if canceled || !confirmed {
-		fmt.Fprintln(out, "Cancelled; nothing was sent.")
-		return addCancelledExitCode, nil
+
+	if !args.yes {
+		confirmed, canceled, err := confirmAdd(reader, out)
+		if err != nil {
+			return 1, err
+		}
+		if canceled || !confirmed {
+			fmt.Fprintln(out, "Cancelled; nothing was sent.")
+			return addCancelledExitCode, nil
+		}
 	}
 
 	url, err := post(cfg, title, date, entry)
@@ -67,6 +107,38 @@ func runAddWithPoster(cfg configuration, in io.Reader, out io.Writer, now time.T
 	}
 	fmt.Fprintln(out, "Created: "+url)
 	return 0, nil
+}
+
+func isArgMode(args addArgs) bool {
+	return args.project != nil || args.today != nil || args.decision != nil ||
+		args.ai != nil || args.success != nil || args.blocker != nil ||
+		args.evidence != nil || args.learning != nil || args.next != nil
+}
+
+func collectWorkLogWithArgs(defaultProject string, args addArgs) (workLog, bool, error) {
+	entry := workLog{sections: make([]string, len(addSections))}
+
+	// Set project: argument takes priority, fallback to default
+	if args.project != nil {
+		entry.project = strings.TrimSpace(*args.project)
+	} else {
+		entry.project = strings.TrimSpace(defaultProject)
+	}
+
+	// Map argument values to sections
+	values := []*string{args.today, args.decision, args.ai, args.success, args.blocker, args.evidence, args.learning, args.next}
+	for i, value := range values {
+		if value != nil {
+			entry.sections[i] = strings.TrimSpace(*value)
+		}
+	}
+
+	// Validate required inputs
+	if err := validateRequiredInput(entry.project, entry.sections[0]); err != nil {
+		return entry, false, err
+	}
+
+	return entry, false, nil
 }
 
 func collectWorkLog(reader *bufio.Reader, out io.Writer, defaultProject string) (workLog, bool, error) {
